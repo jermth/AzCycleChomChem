@@ -1,0 +1,279 @@
+############################
+## Shell CompChem Cluster ##
+############################
+
+[parameters General Settings]
+Order = 10
+
+    [[parameters Cloud Service Provider Configuration]]
+    Description = Configure the Cloud Provider account options.
+    Order = 10
+
+        [[[parameter Credentials]]]
+        Description = The credentials for the cloud provider
+        ParameterType = Cloud.Credentials
+
+        [[[parameter Region]]]
+        Label = Region
+        Description = Deployment Location
+        ParameterType = Cloud.Region
+
+        [[[parameter CloudProvider]]]
+        ParameterType = Cloud.Provider
+        Hidden = true
+        Value = Azure
+
+[parameters Cluster Software]
+Order = 20
+    
+    [[parameters Software]]
+    Description = "Specify the scheduling software, and base OS installed on all nodes, and optionally the cluster-init and chef versions from your Locker."
+    Order = 10
+            
+        [[[parameter ClusterSpecProject]]]
+        Label = ClusterInit Project
+        DefaultValue = CompChem
+        Description = "If set, apply a cluster-init project to use. Runs the default spec of the project. Leave blank to run without cluster-init."
+
+    [[parameters Node Access]]
+    Description = "Specify the credentials required for access to the node.  The Keypair Path specifies the path on local machines for cyclecloud CLI access."
+    Order = 20
+
+        [[[parameter keypairLocation]]]
+        Label = Keypair Path
+        Description = The path to the keypair
+        DefaultValue = ~/.ssh/cyclecloud.pem
+        Required = True
+
+        [[[parameter Username]]]
+        Label = Username
+        Description = The username for the built-in local user on all nodes for direct ssh access.
+        DefaultValue = cyclecloud
+        Conditions.Required := (CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+        Conditions.Excluded := !(CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+
+        [[[parameter Password]]]
+        Label = Password
+        ParameterType = Password
+        Description = The password for the built-in local user on all nodes for direct ssh access.
+        Conditions.Required := (CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+        Conditions.Excluded := !(CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+
+[parameters Compute Backend]
+Order = 30
+
+    [[parameters Instance Types]]
+    Description = "The cluster, in this case, has two roles: the scheduler master-node with shared filer and the execute hosts. Configure which instance types to use based on the requirements of your application."
+    Order = 10
+
+        [[[parameter MasterMachineType]]]
+        Label = Sched/NFS Machine Type
+        Description = The machine type for scheduler master and shared filer.
+        ParameterType = Cloud.MachineType
+            [[[[record Config.ProviderDefaults]]]]
+            Azure = Standard_DS13-2_v2
+
+        [[[parameter UserJumpNodeMachineType]]]
+        Label = JumpNode Machine Type
+        Description = The machine type for user jump nodes
+        ParameterType = Cloud.MachineType
+            [[[[record Config.ProviderDefaults]]]]
+            Azure = Standard_D4_v3
+
+        [[[parameter VizNodeMachineType]]]
+        Label = VizNode Machine Type
+        Description = The machine type for viz nodes
+        ParameterType = Cloud.MachineType
+            [[[[record Config.ProviderDefaults]]]]
+            Azure = Standard_NV6
+
+        [[[parameter ExecuteMachineType]]]
+        Label = Execute Machine Type
+        Description = The machine type for execute nodes
+        ParameterType = Cloud.MachineType
+            [[[[record Config.ProviderDefaults]]]]
+            Azure = Standard_H16r
+
+    [[parameters Execute node auto-Scaling]]
+    Description = "The cluster can autoscale to the workload, adding execute hosts as jobs are queued. To enable this check the box below and choose the initial and maximum core counts for the cluster"
+    Order = 20
+
+        [[[parameter Autoscale]]]
+        Label = Autoscale
+        DefaultValue = true
+        Widget.Plugin = pico.form.BooleanCheckBox
+        Widget.Label = Start and stop execute instances automatically
+
+        [[[parameter AutoStop]]]
+        Label = AutoStop
+        DefaultValue = true
+        Widget.Plugin = pico.form.BooleanCheckBox
+        Widget.Label = Stop execute instances automatically
+
+        [[[parameter InitialExecuteCoreCount]]]
+        Label = Initial Cores
+        Description = The number of execute cores to launch on startup
+        DefaultValue = 0
+        Config.Plugin = pico.form.NumberTextBox
+        Config.MinValue = 0
+        Config.MaxValue = 5000
+        Config.IntegerOnly = true
+
+        [[[parameter MaxExecuteCoreCount]]]
+        Label = Max Cores
+        Description = The total number of execute cores to start
+        DefaultValue = 10
+        Config.Plugin = pico.form.NumberTextBox
+        Config.MinValue = 1
+        Config.MaxValue = 5000
+        Config.IntegerOnly = true
+
+
+[parameters Networking]
+Order = 40
+    
+    [[parameters Azure Virtual Network Configuration]]
+    Order = 40
+
+        [[[parameter computeSubnetId]]]
+        Label = Compute Subnet ID
+        Description = Subnet Resource Path (ResourceGroup/VirtualNetwork/Subnet)
+        ParameterType = Azure.Subnet
+
+        [[[parameter userSubnetId]]]
+        Label = User Subnet ID
+        Description = Subnet Resource Path (ResourceGroup/VirtualNetwork/Subnet)
+        ParameterType = Azure.Subnet
+
+[cluster ComputationalChemistry]
+FormLayout = selectionpanel
+IconUrl = https://docs.microsoft.com/en-us/azure/media/index/azure-germany.svg
+
+# Enable/disable autoscaling
+# The scheduler load will determine the number of execute machines that are started, machines will terminate themselves if they are idle
+# and approaching a billing cycle.
+Autoscale = $Autoscale
+
+    # defines default values used for all nodes. This is inherited automatically by all nodes.
+    # You can create other nodes like this by adding Abstract = true to them and adding
+    # Extends = foo to the nodes that should inherit the definitions from foo.
+    [[node defaults]]
+    Credentials = $Credentials    
+    ImageName = cycle.image.centos7
+
+    Region = $Region
+    KeyPairLocation = $keypairLocation
+    Username = $Username
+    Password = $Password
+
+        [[[network-interface eth0]]]
+        AssociatePublicIpAddress = false
+
+        [[[cluster-init default]]]
+        Project = $ClusterSpecProject 
+        Spec = default
+
+        [[[cluster-init createusers]]]
+        Project = $ClusterSpecProject 
+        Spec = createusers
+
+    [[node master]]
+    MachineType = $MasterMachineType
+    IsReturnProxy = false
+    SubnetId = $computeSubnetId
+
+
+        [[[network-interface eth0]]]
+        AssociatePublicIpAddress = false
+
+        [[[configuration]]]
+        run_list = role[sge_master_role], recipe[createusers]        
+       
+
+        [[[volume nfs-vol1]]]
+        Size = 100        
+        SSD = True
+        Mount = nfs
+        
+        [[[volume nfs-vol2]]]
+        Size = 1024        
+        SSD = True
+        Mount = nfs
+        
+        [[[volume nfs-vol3]]]
+        Size = 1024       
+        SSD = True
+        Mount = nfs
+        
+        [[[volume nfs-vol4]]]
+        Size = 1024       
+        SSD = True
+        Mount = nfs
+
+        [[[configuration cyclecloud.mounts.nfs]]]
+        mountpoint = /mnt/exports
+        devices = /dev/sdc, /dev/sdd, /dev/sde, /dev/sdf
+        fs_type = ext4
+        raid_level = 0
+
+
+    [[nodearray executedefaults]]
+    Abstract = true
+    SubnetId = $computeSubnetId
+    # The initial number of cores of this type to start when the cluster starts
+    InitialCoreCount= $InitialExecuteCoreCount
+
+    # The maximum number of cores to start when the cluster is configured for autoscaling
+    MaxCoreCount = $MaxExecuteCoreCount
+
+        [[[configuration]]]
+        run_list = role[sge_execute_role], recipe[createusers]        
+        cyclecloud.cluster.autoscale.stop_enabled = $AutoStop
+
+        
+    [[nodearray execute]]
+    # Use this azure block to specify Marketplace image
+    Azure.Publisher = OpenLogic
+    Azure.Offer = CentOS-HPC
+    Azure.ImageVersion = 7.1.20170608
+    Azure.Sku = 7.1
+    Azure.OS = linux
+
+    # this block is for installing the CycleCloud jetpack agent in the Image
+    ImageOS = linux
+    ImageName = cycle.image.centos7
+    InstallJetpack = true
+    JetpackVersion = 6.6.0
+    JetpackOS = linux
+
+    Extends = executedefaults
+    MachineType = $ExecuteMachineType
+
+
+    [[node usernodedefaults]]
+    Abstract = true
+    SubnetId = $userSubnetId
+
+        [[[configuration]]]
+        run_list = role[sge_execute_role], recipe[createusers]        
+        cyclecloud.cluster.autoscale.stop_enabled = false
+
+        [[[network-interface eth0]]]
+        AssociatePublicIpAddress = true
+
+    [[node login]]    
+    MachineType = $UserJumpNodeMachineType
+    Extends = usernodedefaults
+    SubnetId = $userSubnetId
+        [[[configuration]]]
+        cyclecloud.cluster.autoscale.stop_enabled = false
+        gridengine.slot_type = login
+    
+    [[nodearray viz]]    
+    MachineType = $VizNodeMachineType
+    Extends = usernodedefaults
+        [[[configuration]]]
+        cyclecloud.cluster.autoscale.stop_enabled = false
+        gridengine.slot_type = viz
+
+

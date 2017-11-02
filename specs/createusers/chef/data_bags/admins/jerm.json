@@ -1,0 +1,7 @@
+{
+    "id":"jerm",
+    "uid":1080,
+    "shell": "/bin/bash",
+    
+    "sshpubkey":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYORxJyIW3UXDlhLjEXA/OAHDhBCd+Utf2LeXJlqej6Cf8rKezj9mPG6IgnZue8ZH2T5a0Lq92gqTHG6yQdUFlswCEL0RahkAA87tyOXjJXvHROwzSGMTkcT0/F/Cs6cZYyzb/LOHOyZrpdlF5mYtl7Qsabjaqg1HKJMpVyzp/sXlkuOiTUugr9G42zhBYowTjSvJVNAK7DG9eqO874IRpftXsNCilDg7YGpSyQN18V+qZXAu5rKuo1KrK0TzPAQSZthvk3fAwubgU3h8NYePEcaotaA5vkAaU/fzqGucDvKjUu6SFqmci0S7xXZELUyCTpldG/JkD9ZZPPaBn5lWl jerm@cycle-mbair"    
+}
