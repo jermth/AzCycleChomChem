@@ -191,7 +191,7 @@ Autoscale = $Autoscale
        
 
         [[[volume nfs-vol1]]]
-        Size = 100        
+        Size = 1024        
         SSD = True
         Mount = nfs
         
