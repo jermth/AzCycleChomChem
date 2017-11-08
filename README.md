@@ -33,9 +33,9 @@ $  cyclecloud locker list
 azure-storage (az://cyclecloudapp/cyclecloud)
 ```
 
-2. Edit the cyclecloud config file `~cycle/config.ini`, which was created by the `cyclecloud initialize` commmand.
+2. Edit the cyclecloud config file `~/.cycle/config.ini`, which was created by the `cyclecloud initialize` commmand.
 
-Add the following section in `~cycle/config.ini`, replacing the subscription_id, tenant_id, application_id and application_secret with your Azure AD Service Principal.
+Add the following section in `~/.cycle/config.ini`, replacing the subscription_id, tenant_id, application_id and application_secret with your Azure AD Service Principal.
 
 The application_secret is your SP password.
 
