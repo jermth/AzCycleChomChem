@@ -235,7 +235,7 @@ Autoscale = $Autoscale
     # Use this azure block to specify Marketplace image
     Azure.Publisher = OpenLogic
     Azure.Offer = CentOS-HPC
-    Azure.ImageVersion = 7.1.20170608
+    Azure.ImageVersion = latest
     Azure.Sku = 7.1
     Azure.OS = linux
 
@@ -243,7 +243,7 @@ Autoscale = $Autoscale
     ImageOS = linux
     ImageName = cycle.image.centos7
     InstallJetpack = true
-    JetpackVersion = 6.6.0
+    JetpackVersion = 6.6.1
     JetpackOS = linux
 
     Extends = executedefaults
