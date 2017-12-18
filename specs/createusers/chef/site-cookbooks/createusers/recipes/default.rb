@@ -114,6 +114,7 @@ users.each do |login|
     supports :manage_home => true
     only_if "test -d #{node[:createusers][:base_home_dir]}"
   end
+
   directory "#{home}/.ssh" do
     owner login
     group "users"
@@ -121,21 +122,21 @@ users.each do |login|
     action :create
     only_if "test -d #{home}"
   end
+
+  template "#{home}/.ssh/authorized_keys" do
+    source "authorized_keys.erb"
+    mode "0600"
+    owner login
+    group "users"
+    variables(:pubkey => loginUser['sshpubkey'])
+    only_if "test -d #{home}/.ssh"
+    not_if "test -e #{home}/.ssh/authorized_keys"
+  end
+
   execute "generate ssh keys for #{login}." do
     user login
     creates "#{home}/.ssh/id_rsa.pub"
-    command "ssh-keygen -t rsa -q -f #{home}/.ssh/id_rsa -P \"\""
-  end
-  execute "generate authorized_keys for #{login}." do
-    user login
-    creates "#{home}/.ssh/authorized_keys"
-    command "cp #{home}/.ssh/id_rsa.pub #{home}/.ssh/authorized_keys"
-    not_if "test -e #{home}/.ssh/authorized_keys"
-  end
-  
-  execute "Force password reset" do
-    command "chage -d 0 #{login} && touch #{home}/.ssh/.password_set"
-    not_if "test -e #{home}/.ssh/.password_set"
+    command "ssh-keygen -t rsa -q -f #{home}/.ssh/id_rsa -P \"\" && cat #{home}/.ssh/id_rsa.pub >> #{home}/.ssh/authorized_keys"
   end
 
 end
