@@ -145,6 +145,24 @@ Order = 40
         Description = Subnet Resource Path (ResourceGroup/VirtualNetwork/Subnet)
         ParameterType = Azure.Subnet
 
+[parameters Azure AD]
+Order = 50
+    
+    [[parameters Azure Active Directory ServiceConfiguration]]
+    Order = 50
+
+        [[[parameter azureADdomainName]]]
+        Label = Domain Name
+        Description = The domain name registered in the Azure ADS
+
+        [[[parameter azureADserviceUser]]]
+        Label = AD Service User
+        Description = Service user in AD used for generating Kerberos ticket
+
+        [[[parameter azureADkerberosKeytabURL]]]
+        Label = URL for Kerberos Ticket
+        Description = URL for downloading the kerberos keytab to be used with the 
+
 [cluster ComputationalChemistry]
 FormLayout = selectionpanel
 IconUrl = https://docs.microsoft.com/en-us/azure/media/index/azure-germany.svg
@@ -173,21 +191,26 @@ Autoscale = $Autoscale
         Project = $ClusterSpecProject 
         Spec = default
 
-        [[[cluster-init createusers]]]
+        [[[cluster-init azure_ad]]]
         Project = $ClusterSpecProject 
-        Spec = createusers
+        Spec = azure_ad
+
+        [[[configuration azure_ad.domain]]]
+        domain_name = $azureADdomainName
+        service_user = $azureADserviceUser
+        kerberos_keytab_url = $azureADkerberosKeytabURL
 
     [[node master]]
     MachineType = $MasterMachineType
-    IsReturnProxy = false
+    IsReturnProxy = true
     SubnetId = $computeSubnetId
 
 
         [[[network-interface eth0]]]
-        AssociatePublicIpAddress = false
+        AssociatePublicIpAddress = true
 
         [[[configuration]]]
-        run_list = role[sge_master_role], recipe[createusers]        
+        run_list = role[sge_master_role], recipe[azure_ad]        
        
 
         [[[volume nfs-vol1]]]
@@ -216,6 +239,9 @@ Autoscale = $Autoscale
         fs_type = ext4
         raid_level = 0
 
+        [[[configuration cyclecloud.exports.apps]]]
+        type = nfs
+        export_path = /mnt/exports/apps/sss
 
     [[nodearray executedefaults]]
     Abstract = true
@@ -227,10 +253,14 @@ Autoscale = $Autoscale
     MaxCoreCount = $MaxExecuteCoreCount
 
         [[[configuration]]]
-        run_list = role[sge_execute_role], recipe[createusers]        
+        run_list = role[sge_execute_role], recipe[azure_ad]        
         cyclecloud.cluster.autoscale.stop_enabled = $AutoStop
 
-        
+        [[[configuration cyclecloud.mounts.apps]]]
+        type = nfs
+        mountpoint = /apps/sss
+        export_path = /mnt/exports/apps/sss
+
     [[nodearray execute]]
     # Use this azure block to specify Marketplace image
     Azure.Publisher = OpenLogic
@@ -243,19 +273,22 @@ Autoscale = $Autoscale
     ImageOS = linux
     ImageName = cycle.image.centos7
     InstallJetpack = true
-    JetpackVersion = 6.6.1
+    JetpackVersion = 6.7.0
     JetpackOS = linux
 
     Extends = executedefaults
     MachineType = $ExecuteMachineType
-
+  
+        [[[configuration]]]
+        run_list = role[sge_execute_role], recipe[azure_ad]        
+        cyclecloud.cluster.autoscale.stop_enabled = $AutoStop
 
     [[node usernodedefaults]]
     Abstract = true
     SubnetId = $userSubnetId
 
         [[[configuration]]]
-        run_list = role[sge_execute_role], recipe[createusers]        
+        run_list = role[sge_execute_role], recipe[azure_ad]        
         cyclecloud.cluster.autoscale.stop_enabled = false
 
         [[[network-interface eth0]]]
@@ -269,6 +302,11 @@ Autoscale = $Autoscale
         cyclecloud.cluster.autoscale.stop_enabled = false
         gridengine.slot_type = login
     
+        [[[configuration cyclecloud.mounts.apps]]]
+        type = nfs
+        mountpoint = /apps/sss
+        export_path = /mnt/exports/apps/sss
+
     [[nodearray viz]]    
     MachineType = $VizNodeMachineType
     Extends = usernodedefaults
