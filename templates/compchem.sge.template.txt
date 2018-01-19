@@ -159,9 +159,13 @@ Order = 50
         Label = AD Service User
         Description = Service user in AD used for generating Kerberos ticket
 
-        [[[parameter azureADkerberosKeytabURL]]]
-        Label = URL for Kerberos Ticket
-        Description = URL for downloading the kerberos keytab to be used with the 
+        [[[parameter azureADserviceUserPW]]]
+        Label = PW for AD Service User PW
+        Description = Password for the Service user in AD used for generating Kerberos ticket
+
+        #[[[parameter azureADkerberosKeytabURL]]]
+        #Label = URL for Kerberos Ticket
+        #Description = URL for downloading the kerberos keytab to be used with the 
 
 [cluster ComputationalChemistry]
 FormLayout = selectionpanel
@@ -198,7 +202,8 @@ Autoscale = $Autoscale
         [[[configuration azure_ad.domain]]]
         domain_name = $azureADdomainName
         service_user = $azureADserviceUser
-        kerberos_keytab_url = $azureADkerberosKeytabURL
+        service_user_password = $azureADserviceUserPW
+        #kerberos_keytab_url = $azureADkerberosKeytabURL
 
     [[node master]]
     MachineType = $MasterMachineType

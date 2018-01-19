@@ -8,35 +8,42 @@
 #
 
 
-if node["azure_ad"]["domain"]["domain_name"].nil? || node["azure_ad"]["domain"]["service_user"].nil? || node["azure_ad"]["domain"]["kerberos_keytab_url"].nil? 
-  Chef::Log.error("Azure AD domain settings (domain-name, service-user or kerberos_keytab_url not defined")
+if node["azure_ad"]["domain"]["domain_name"].nil? || node["azure_ad"]["domain"]["service_user"].nil? || node["azure_ad"]["domain"]["service_user_password"].nil? 
+  Chef::Log.error("Azure AD domain settings (domain-name, service-user or password not defined")
   raise
 end
 
 domain_name = node["azure_ad"]["domain"]["domain_name"].upcase
 service_user = node["azure_ad"]["domain"]["service_user"]
-kerberos_keytab_url = node["azure_ad"]["domain"]["kerberos_keytab_url"] 
+service_user_password = node["azure_ad"]["domain"]["service_user_password"] 
 
 chefstate = node[:cyclecloud][:chefstate]
 
 # package requirements
-%w(realmd sssd krb5-workstation krb5-libs oddjob oddjob-mkhomedir adcli).each { |p| package p }
+%w(realmd sssd krb5-workstation krb5-libs oddjob oddjob-mkhomedir adcli samba-common-tools).each { |p| package p }
 
 # fetch the keytab used for kinit
-remote_file "#{chefstate}/kerberos.keytab" do
-  source kerberos_keytab_url
-  owner 'root'
-  mode '0600'
-  action :create_if_missing  
-end
+# Commenting this out till we have the Kerberos keytab  
+# remote_file "#{chefstate}/kerberos.keytab" do
+#   source kerberos_keytab_url
+#   owner 'root'
+#   mode '0600'
+#   action :create_if_missing  
+# end
 
 execute "Realm discover" do
   command  "realm discover #{domain_name} && touch #{chefstate}/realm.discovered"
   creates "#{chefstate}/realm.discovered"
 end
 
+# Commenting this out till we have the Kerberos keytab 
+# execute "Kinit" do 
+#   command "kinit #{service_user}@#{domain_name} -k -t #{chefstate}/kerberos.keytab && touch #{chefstate}/kinit.complete"
+#   creates "#{chefstate}/kinit.complete"
+# end
+
 execute "Kinit" do
-  command "kinit #{service_user}@#{domain_name} -k -t #{chefstate}/kerberos.keytab && touch #{chefstate}/kinit.complete"
+  command "echo '#{service_user_password}' | kinit #{service_user}@#{domain_name} && touch #{chefstate}/kinit.complete"
   creates "#{chefstate}/kinit.complete"
 end
 
